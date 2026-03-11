@@ -1,0 +1,13 @@
+{
+    frankenphp
+    order php_server before file_server
+}
+
+:80 {
+    root * /var/www/public
+
+    encode gzip
+
+    php_server
+}
+
