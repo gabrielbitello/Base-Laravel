@@ -1,8 +1,8 @@
-# 📚 Guia de Bibliotecas - BaseLaravel
+# 📚 Guia de Bibliotecas - Base Laravel
 
 ## 🐘 Dependências PHP
 
-### Filament (^5.0)
+### Filament (^5.4.3)
 Painel administrativo moderno para Laravel.
 
 **Uso no projeto:**
@@ -17,7 +17,7 @@ app/Filament/Widgets/       → Widgets do dashboard
 
 ---
 
-### Laravel Boost (^2.2)
+### Laravel Boost (^2.4.1)
 Assistente de IA do Laravel que acelera o desenvolvimento fornecendo contexto e estrutura essenciais para gerar código de alta qualidade.
 
 **Ferramentas disponíveis:**
@@ -38,4 +38,3 @@ php artisan boost:install
 ```
 
 **Documentação:** https://laravel.com/ai/boost
-

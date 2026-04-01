@@ -1,10 +1,10 @@
-name: BaseLaravel
+name: base-laravel
 
 services:
   serve:
     build:
       context: ./serve
-    container_name: BaseLaravel-serve
+    container_name: base-laravel-serve
     restart: unless-stopped
     working_dir: /var/www
     ports:
@@ -17,48 +17,50 @@ services:
       mysql:
         condition: service_healthy
     networks:
-      - BaseLaravel
+      - base-laravel
 
   mysql:
     image: mysql:8.4
-    container_name: BaseLaravel-mysql
+    container_name: base-laravel-mysql
     restart: unless-stopped
     ports:
       - "${DB_EXTERNAL_PORT:-3306}:3306"
     environment:
-      MYSQL_DATABASE: ${DB_DATABASE:-BaseLaravel}
-      MYSQL_USER: ${DB_USERNAME:-BaseLaravel}
+      MYSQL_DATABASE: ${DB_DATABASE:-base-laravel}
+      MYSQL_USER: ${DB_USERNAME:-base-laravel}
       MYSQL_PASSWORD: ${DB_PASSWORD:-password}
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
     volumes:
       - mysql-data:/var/lib/mysql
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD:-rootpassword}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 2s
+      timeout: 2s
+      retries: 15
+      start_period: 10s
     networks:
-      - BaseLaravel
+      - base-laravel
 
   phpmyadmin:
     image: phpmyadmin:latest
-    container_name: BaseLaravel-phpmyadmin
+    container_name: base-laravel-phpmyadmin
     restart: unless-stopped
+    profiles:
+      - tools
     ports:
       - "${PMA_PORT:-8080}:80"
     environment:
       PMA_HOST: mysql
-      PMA_USER: ${DB_USERNAME:-BaseLaravel}
+      PMA_USER: ${DB_USERNAME:-base-laravel}
       PMA_PASSWORD: ${DB_PASSWORD:-password}
     depends_on:
       mysql:
         condition: service_healthy
     networks:
-      - BaseLaravel
+      - base-laravel
 
 volumes:
   mysql-data:
 
 networks:
-  BaseLaravel:
-
+  base-laravel:
