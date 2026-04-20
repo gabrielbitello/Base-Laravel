@@ -6,6 +6,7 @@ on:
 
 jobs:
   cleanup:
+    if: ${{ vars.ENABLE_TEMPLATE_WORKFLOWS == 'true' }}
     runs-on: ubuntu-latest
 
     steps:

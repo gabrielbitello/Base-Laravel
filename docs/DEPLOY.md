@@ -6,9 +6,63 @@
 - Acesso root/sudo
 - Domínio apontando para o IP da VPS (opcional, mas recomendado)
 
+## 0. Habilitar workflows do template
+
+Este projeto é um template e os workflows ficam bloqueados por padrão.
+
+Crie a variável de repositório no GitHub:
+
+- `Settings` → `Secrets and variables` → `Actions` → `Variables`
+- Nome: `ENABLE_TEMPLATE_WORKFLOWS`
+- Valor: `true`
+
+Sem essa variável, os jobs de CI/deploy/cleanup não executam.
+
 ---
 
 ## 1. Preparar a VPS
+
+### Bootstrap automático (recomendado)
+
+Em vez de configurar tudo manualmente, use o script `docker/bootstrap-vps.sh`.
+
+Execução mínima:
+
+```bash
+cd /caminho/do/projeto
+sudo bash docker/bootstrap-vps.sh
+```
+
+Execução completa (deploy user + MySQL HML compartilhado + Cloudflared):
+
+```bash
+cd /caminho/do/projeto
+sudo DEPLOY_SSH_PUBLIC_KEY="$(cat ~/.ssh/deploy_key.pub)" \
+START_HML_MYSQL=1 \
+HML_MYSQL_ROOT_PASSWORD="troque-essa-senha" \
+ENABLE_CLOUDFLARED=1 \
+CLOUDFLARE_TUNNEL_ID="SEU_TUNNEL_ID" \
+CLOUDFLARE_CREDENTIALS_FILE="/root/.cloudflared/SEU_TUNNEL_ID.json" \
+bash docker/bootstrap-vps.sh
+```
+
+O script é idempotente: pode ser executado novamente para ajustar configuração.
+
+### Variáveis principais do bootstrap
+
+| Variável | Padrão | Descrição |
+|---|---|---|
+| `DEPLOY_USER` | `deploy` | Usuário de deploy criado/ajustado |
+| `DEPLOY_SSH_PUBLIC_KEY` | vazio | Chave pública adicionada em `authorized_keys` |
+| `APP_PATH` | `/opt/app` | Caminho da aplicação de produção |
+| `PREVIEWS_PATH` | `/opt/previews` | Caminho base dos previews |
+| `ENABLE_UFW` | `1` | Configura UFW com `OpenSSH`, `80`, `443` |
+| `ENABLE_CLOUDFLARED` | `0` | Instala/configura Cloudflared |
+| `START_HML_MYSQL` | `0` | Sobe MySQL compartilhado de HML |
+| `HML_MYSQL_PORT` | `3307` | Porta externa do MySQL de HML |
+| `HML_MYSQL_ROOT_PASSWORD` | `rootpassword` | Senha root do MySQL de HML |
+
+Se preferir, continue com os passos manuais abaixo.
 
 ### Instalar Docker
 

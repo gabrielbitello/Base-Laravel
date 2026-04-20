@@ -8,6 +8,7 @@ on:
 
 jobs:
   quality:
+    if: ${{ vars.ENABLE_TEMPLATE_WORKFLOWS == 'true' }}
     runs-on: ubuntu-latest
 
     services:
