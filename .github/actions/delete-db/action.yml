@@ -1,0 +1,33 @@
+name: Delete Database
+description: Drops a MySQL database and user for a branch
+
+inputs:
+  branch-slug:
+    description: Sanitized branch name
+    required: true
+  mysql-host:
+    description: MySQL host
+    required: true
+  mysql-port:
+    description: MySQL port
+    default: '3306'
+  mysql-root-password:
+    description: MySQL root password
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Drop database and user
+      shell: bash
+      run: |
+        SLUG="${{ inputs.branch-slug }}"
+        DB_NAME="hml_${SLUG//-/_}"
+        DB_USER="hml_${SLUG//-/_}"
+
+        mysql -h "${{ inputs.mysql-host }}" -P "${{ inputs.mysql-port }}" -u root -p"${{ inputs.mysql-root-password }}" <<SQL
+          DROP DATABASE IF EXISTS \`$DB_NAME\`;
+          DROP USER IF EXISTS '$DB_USER'@'%';
+          FLUSH PRIVILEGES;
+        SQL
+

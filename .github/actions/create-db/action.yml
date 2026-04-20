@@ -1,0 +1,51 @@
+name: Create Database
+description: Creates a MySQL database for a branch on the shared HML MySQL instance
+
+inputs:
+  branch-slug:
+    description: Sanitized branch name to use as database name
+    required: true
+  mysql-host:
+    description: MySQL host
+    required: true
+  mysql-port:
+    description: MySQL port
+    default: '3306'
+  mysql-root-password:
+    description: MySQL root password
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Create database and user
+      shell: bash
+      run: |
+        SLUG="${{ inputs.branch-slug }}"
+        DB_NAME="hml_${SLUG//-/_}"
+        DB_USER="hml_${SLUG//-/_}"
+        DB_PASS="hml_${SLUG//-/_}_pass"
+
+        mysql -h "${{ inputs.mysql-host }}" -P "${{ inputs.mysql-port }}" -u root -p"${{ inputs.mysql-root-password }}" <<SQL
+          CREATE DATABASE IF NOT EXISTS \`$DB_NAME\`;
+          CREATE USER IF NOT EXISTS '$DB_USER'@'%' IDENTIFIED BY '$DB_PASS';
+          GRANT ALL PRIVILEGES ON \`$DB_NAME\`.* TO '$DB_USER'@'%';
+          FLUSH PRIVILEGES;
+        SQL
+
+        echo "db_name=$DB_NAME" >> "$GITHUB_OUTPUT"
+        echo "db_user=$DB_USER" >> "$GITHUB_OUTPUT"
+        echo "db_pass=$DB_PASS" >> "$GITHUB_OUTPUT"
+      id: db
+
+outputs:
+  db_name:
+    description: Created database name
+    value: ${{ steps.db.outputs.db_name }}
+  db_user:
+    description: Created database user
+    value: ${{ steps.db.outputs.db_user }}
+  db_pass:
+    description: Created database password
+    value: ${{ steps.db.outputs.db_pass }}
+

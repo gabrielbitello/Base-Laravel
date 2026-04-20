@@ -1,0 +1,168 @@
+name: Deploy Preview
+
+on:
+  push:
+    branches-ignore: [main]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Production.Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Define slug
+        id: slug
+        run: |
+          SLUG=$(echo "${{ github.ref_name }}" | sed 's/[^a-zA-Z0-9]/-/g' | tr '[:upper:]' '[:lower:]')
+          echo "slug=$SLUG" >> "$GITHUB_OUTPUT"
+          echo "url=$SLUG.${{ secrets.PREVIEW_DOMAIN }}" >> "$GITHUB_OUTPUT"
+
+      - name: Create database
+        id: db
+        uses: ./.github/actions/create-db
+        with:
+          branch-slug: ${{ steps.slug.outputs.slug }}
+          mysql-host: ${{ secrets.VPS_HOST }}
+          mysql-port: ${{ secrets.HML_MYSQL_PORT }}
+          mysql-root-password: ${{ secrets.HML_MYSQL_ROOT_PASSWORD }}
+
+      - name: Setup preview environment via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            SLUG="${{ steps.slug.outputs.slug }}"
+            APP_PATH="${{ secrets.HML_PATH }}/$SLUG"
+
+            mkdir -p "$APP_PATH/docker"
+            cd "$APP_PATH"
+
+            # Copy preview compose (without MySQL)
+            cp ${{ secrets.PROD_PATH }}/docker/preview-compose.yml docker/
+
+      - name: Copy .env.staging to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: .env.staging
+          target: ${{ secrets.HML_PATH }}/${{ steps.slug.outputs.slug }}
+
+      - name: Start containers and configure tunnel
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            SLUG="${{ steps.slug.outputs.slug }}"
+            APP_PATH="${{ secrets.HML_PATH }}/$SLUG"
+            PREVIEW_URL="${{ steps.slug.outputs.url }}"
+            cd "$APP_PATH"
+
+            # Prepare .env from committed .env.staging + dynamic overrides
+            cp .env.staging .env
+            sed -i "s|APP_URL=.*|APP_URL=https://$PREVIEW_URL|" .env
+            sed -i "s|APP_NAME=.*|APP_NAME=base-laravel-$SLUG|" .env
+            sed -i "s|DB_HOST=.*|DB_HOST=hml-shared-mysql|" .env
+            sed -i "s|DB_DATABASE=.*|DB_DATABASE=${{ steps.db.outputs.db_name }}|" .env
+            sed -i "s|DB_USERNAME=.*|DB_USERNAME=${{ steps.db.outputs.db_user }}|" .env
+            sed -i "s|DB_PASSWORD=.*|DB_PASSWORD=${{ steps.db.outputs.db_pass }}|" .env
+            echo "" >> .env
+            echo "DOCKER_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$SLUG" >> .env
+
+            # Start app containers (connects to shared MySQL via network)
+            docker compose -f docker/preview-compose.yml pull
+            docker compose -f docker/preview-compose.yml up -d --remove-orphans
+            docker compose -f docker/preview-compose.yml exec -T serve php artisan migrate --force
+
+            # Get the serve container port
+            SERVE_PORT=$(docker compose -f docker/preview-compose.yml port serve 80 | cut -d: -f2)
+
+            # Add route to Cloudflare Tunnel config
+            TUNNEL_CONFIG="${{ secrets.CLOUDFLARE_TUNNEL_CONFIG_PATH }}"
+
+            # Check if route already exists
+            if ! grep -q "$PREVIEW_URL" "$TUNNEL_CONFIG"; then
+              TMP_FILE=$(mktemp)
+              awk -v preview_url="$PREVIEW_URL" -v serve_port="$SERVE_PORT" '
+                /- service: http_status:404/ {
+                  print "  - hostname: " preview_url
+                  print "    service: http://localhost:" serve_port
+                }
+                { print }
+              ' "$TUNNEL_CONFIG" > "$TMP_FILE"
+              mv "$TMP_FILE" "$TUNNEL_CONFIG"
+            else
+              sed -i "/$PREVIEW_URL/{n;s|service:.*|service: http://localhost:$SERVE_PORT|}" "$TUNNEL_CONFIG"
+            fi
+
+            # Reload tunnel to apply new route
+            sudo systemctl restart cloudflared
+
+      - name: Create Cloudflare DNS record
+        run: |
+          curl -s -X POST "https://api.cloudflare.com/client/v4/zones/${{ secrets.CLOUDFLARE_ZONE_ID }}/dns_records" \
+            -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            --data '{
+              "type": "CNAME",
+              "name": "${{ steps.slug.outputs.slug }}.${{ secrets.PREVIEW_DOMAIN }}",
+              "content": "${{ secrets.CLOUDFLARE_TUNNEL_ID }}.cfargotunnel.com",
+              "proxied": true,
+              "ttl": 1
+            }' || true
+
+      - name: Comment PR with preview URL
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `🚀 Preview deployed: https://${{ steps.slug.outputs.url }}`
+            })

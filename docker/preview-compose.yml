@@ -1,0 +1,50 @@
+services:
+  serve:
+    image: ${DOCKER_IMAGE:-ghcr.io/your-org/your-app:latest}
+    container_name: ${APP_NAME:-app}-serve
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-0}:80"
+    env_file: .env
+    environment:
+      CONTAINER_ROLE: serve
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/up"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    deploy:
+      update_config:
+        order: start-first
+    stop_grace_period: 30s
+    networks:
+      - hml-shared
+
+  worker:
+    image: ${DOCKER_IMAGE:-ghcr.io/your-org/your-app:latest}
+    container_name: ${APP_NAME:-app}-worker
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      CONTAINER_ROLE: worker
+    stop_signal: SIGTERM
+    stop_grace_period: 90s
+    networks:
+      - hml-shared
+
+  scheduler:
+    image: ${DOCKER_IMAGE:-ghcr.io/your-org/your-app:latest}
+    container_name: ${APP_NAME:-app}-scheduler
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      CONTAINER_ROLE: scheduler
+    stop_grace_period: 30s
+    networks:
+      - hml-shared
+
+networks:
+  hml-shared:
+    external: true
+

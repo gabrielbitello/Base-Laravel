@@ -9,9 +9,7 @@ RUN install-php-extensions \
     bcmath \
     exif \
     gd \
-    opcache \
-    xdebug \
-    pcntl
+    opcache
 
 ARG NODE_VERSION=22.16.0
 RUN ARCH=$(dpkg --print-architecture | sed 's/amd64/x64/') \
@@ -21,12 +19,18 @@ RUN ARCH=$(dpkg --print-architecture | sed 's/amd64/x64/') \
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-COPY php.ini /usr/local/etc/php/conf.d/custom.ini
-COPY opcache.ini /usr/local/etc/php/conf.d/opcache.ini
-COPY Caddyfile /etc/caddy/Caddyfile
+COPY docker/serve/prod.php.ini /usr/local/etc/php/conf.d/custom.ini
+COPY docker/serve/Caddyfile /etc/caddy/Caddyfile
+COPY docker/serve/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
 
 WORKDIR /var/www
+COPY . .
 
-EXPOSE 80 5173
+RUN composer install --no-dev --no-interaction --optimize-autoloader \
+    && npm ci && npm run build && rm -rf node_modules
 
-CMD ["frankenphp", "run", "--config", "/etc/caddy/Caddyfile"]
+EXPOSE 80 443
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+

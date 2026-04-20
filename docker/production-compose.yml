@@ -1,0 +1,84 @@
+services:
+  serve:
+    image: ${DOCKER_IMAGE:-ghcr.io/your-org/your-app:latest}
+    container_name: ${APP_NAME:-app}-serve
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-80}:80"
+      - "${APP_HTTPS_PORT:-443}:443"
+    env_file: .env
+    environment:
+      CONTAINER_ROLE: serve
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/up"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    deploy:
+      update_config:
+        order: start-first
+    stop_grace_period: 30s
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - app
+
+  worker:
+    image: ${DOCKER_IMAGE:-ghcr.io/your-org/your-app:latest}
+    container_name: ${APP_NAME:-app}-worker
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      CONTAINER_ROLE: worker
+    stop_signal: SIGTERM
+    stop_grace_period: 90s
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - app
+
+  scheduler:
+    image: ${DOCKER_IMAGE:-ghcr.io/your-org/your-app:latest}
+    container_name: ${APP_NAME:-app}-scheduler
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      CONTAINER_ROLE: scheduler
+    stop_grace_period: 30s
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - app
+
+  mysql:
+    image: mysql:8.4
+    container_name: ${APP_NAME:-app}-mysql
+    restart: unless-stopped
+    ports:
+      - "${DB_EXTERNAL_PORT:-3306}:3306"
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:-app}
+      MYSQL_USER: ${DB_USERNAME:-app}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-password}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD:-rootpassword}"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+      start_period: 10s
+    networks:
+      - app
+
+volumes:
+  mysql-data:
+
+networks:
+  app:
+

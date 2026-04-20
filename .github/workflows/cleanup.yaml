@@ -1,0 +1,71 @@
+name: Cleanup Preview
+
+on:
+  delete:
+    branches-ignore: [main]
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Define slug
+        id: slug
+        run: |
+          SLUG=$(echo "${{ github.event.ref }}" | sed 's/[^a-zA-Z0-9]/-/g' | tr '[:upper:]' '[:lower:]')
+          echo "slug=$SLUG" >> "$GITHUB_OUTPUT"
+
+      - name: Delete database
+        uses: ./.github/actions/delete-db
+        with:
+          branch-slug: ${{ steps.slug.outputs.slug }}
+          mysql-host: ${{ secrets.VPS_HOST }}
+          mysql-port: ${{ secrets.HML_MYSQL_PORT }}
+          mysql-root-password: ${{ secrets.HML_MYSQL_ROOT_PASSWORD }}
+
+      - name: Remove containers and tunnel route
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            SLUG="${{ steps.slug.outputs.slug }}"
+            APP_PATH="${{ secrets.HML_PATH }}/$SLUG"
+            PREVIEW_URL="${SLUG}.${{ secrets.PREVIEW_DOMAIN }}"
+
+            # Remove containers (no -v needed, no local MySQL volume)
+            if [ -d "$APP_PATH" ]; then
+              cd "$APP_PATH"
+              docker compose -f docker/preview-compose.yml down
+              cd ..
+              rm -rf "$SLUG"
+            fi
+
+            # Remove route from Cloudflare Tunnel config
+            TUNNEL_CONFIG="${{ secrets.CLOUDFLARE_TUNNEL_CONFIG_PATH }}"
+            if grep -q "$PREVIEW_URL" "$TUNNEL_CONFIG"; then
+              sed -i "/$PREVIEW_URL/{N;d;}" "$TUNNEL_CONFIG"
+              sudo systemctl restart cloudflared
+            fi
+
+      - name: Remove Cloudflare DNS record
+        run: |
+          RECORD_ID=$(curl -s "https://api.cloudflare.com/client/v4/zones/${{ secrets.CLOUDFLARE_ZONE_ID }}/dns_records?name=${{ steps.slug.outputs.slug }}.${{ secrets.PREVIEW_DOMAIN }}" \
+            -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}" \
+            | jq -r '.result[0].id // empty')
+
+          if [ -n "$RECORD_ID" ]; then
+            curl -s -X DELETE "https://api.cloudflare.com/client/v4/zones/${{ secrets.CLOUDFLARE_ZONE_ID }}/dns_records/$RECORD_ID" \
+              -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}"
+          fi
+
+      - name: Remove container image
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: ${{ github.event.repository.name }}
+          package-type: container
+          delete-only-untagged-versions: false
+          min-versions-to-keep: 5
