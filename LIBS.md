@@ -63,6 +63,87 @@ Arquivos gerados (`_ide_helper.php`, `_ide_helper_models.php`, `.phpstorm.meta.p
 
 ---
 
+### Filament Developer Logins (^2.1) `dev`
+Botões de login rápido na tela de `/admin/login` para os usuários pré-configurados do seeder — evita digitar e-mail/senha no dia a dia local. Também permite trocar de conta logado (`switchable`).
+
+**Só ativo em ambiente `local`/`development`** (`app()->environment()`); em staging/produção nem o botão nem a rota existem.
+
+Os usuários oferecidos são configurados em `app/Providers/Filament/AdminPanelProvider.php` e precisam existir no banco (o `DatabaseSeeder` cria o Admin em local).
+
+---
+
+### Filament Shield (^4.3) + spatie/laravel-permission (^8.3)
+RBAC pronto: papéis e permissões com UI no painel (Shield) e base spatie. O `User` já usa `HasRoles`, o plugin está registrado e o `Gate::before` no `AppServiceProvider` dá bypass total ao papel `super_admin`.
+
+Ao iniciar um projeto real: `php artisan shield:install admin` (gera papéis/permissões dos resources e o super admin).
+
+---
+
+### spatie/laravel-activitylog (^5.1) + pxlrbt/filament-activity-log (^3.1)
+Auditoria de mudanças em modelos com visualização no painel. O `User` já usa `LogsActivity` + `CausesActivity` (tabela `activity`).
+
+Atenção: no activitylog v5 os traits ficaram em `Spatie\Activitylog\Models\Concerns\`. Para ver o log de um resource, crie uma página estendendo `pxlrbt\FilamentActivityLog\Pages\ListActivities` e registre em `getPages()`.
+
+---
+
+### lucascudo/laravel-pt-br-localization (^3.0)
+Mensagens de validação, auth, passwords e paginação em pt-BR (`lang/pt_BR`). O template já inicia com `APP_LOCALE=pt_BR` e `faker_locale pt_BR` (Filament traduz o painel automaticamente para pt_BR).
+
+---
+
+### Filament JSON Column (^4.1)
+Campo/coluna JSON para Filament (editor no form, visualização na tabela). Uso direto: `JsonColumn::make('metadata')`.
+
+---
+
+### Campos brasileiros (nativo, sem lib)
+O `leandrocfe/filament-ptbr-form-fields` não tem release para Filament 5 — use o Filament nativo:
+
+```php
+TextInput::make('cpf')->mask('000.000.000-00');
+TextInput::make('cnpj')->mask('00.000.000/0000-00');
+TextInput::make('phone')->tel()->mask('(00) 00000-0000');
+TextInput::make('price')->prefix('R$')->numeric();
+```
+
+---
+
+### Paratest (^7.20) `dev`
+Testes em paralelo: `php artisan test --parallel`.
+
+### Roave Security Advisories (dev)
+Bloqueia `composer update/install` se alguma versão resolvida tiver CVE conhecida. Se um update falhar com conflito de advisory, é sinal para revisar a dependência.
+
+---
+
+## 🌐 Tooling de Traduções
+
+Dicionário de strings em `lang/pt_BR.json` (chave = texto em inglês usado via `__('...')`), com três camadas de automação:
+
+- **`make translate KEY="Log in" PT="Entrar"`** — insere/atualiza a chave em ordem alfabética, preservando o arquivo. `UPDATE=1` substitui valor existente. (script: `scripts/add-translation.mjs`)
+- **`make missing-translations`** — lista chaves `__()` usadas nas views sem tradução (`--json`/`--verbose` disponíveis). (script: `scripts/find-missing-translations.php`)
+- **pre-commit** (`.githooks/pre-commit`) — normaliza o `lang/*.json` staged: valida JSON, ordena chaves, 4 espaços, unicode literal.
+- **Merge semântico** — `lang/*.json` usa o driver `merge=lang-json` (`.gitattributes` + registro no composer): duas branches editando traduções fazem merge sem conflito; mesmo valor alterado nos dois lados mantém o da branch atual e avisa. (`.githooks/merge-lang.php`)
+- **CI `auto-fix-lang.yml`** — no PR, o bot mergeia main na branch com o driver semântico, normaliza e empurra de volta; branches antigas chegam na main sem conflito de traduções. Requer `ENABLE_TEMPLATE_WORKFLOWS=true`.
+
+---
+
+## 🌍 Conteúdo translatable (modelos multi-idioma)
+
+Instalado: `spatie/laravel-translatable` (^6.14) + `lara-zeus/spatie-translatable` (^2.0) — tradução de **conteúdo de modelos** (diferente das strings de UI via `__()`).
+
+Para usar num resource:
+1. Modelo: `use Spatie\Translatable\HasTranslations;` + `public array $translatable = ['campo'];`
+2. Páginas do resource: usar as concerns `LaraZeus\SpatieTranslatable\Resources\Pages\{CreateRecord,EditRecord,ListRecords,ManageRecords,ViewRecord}\Translatable` (trocam as originais) — elas adicionam o seletor de locale e o content driver.
+3. Opcional: registrar `LaraZeus\SpatieTranslatable\SpatieTranslatablePlugin::make()` no painel para configurar `defaultLocales`/`useFallbackLocale`.
+
+**Armadilhas conhecidas** (observadas no vippers, ver o trait `EditPageWithTranslations` deles):
+1. **FileUpload em campo translatable**: o spatie guarda string, o form espera array — normalizar em `mutateFormDataBeforeFill`/`mutateFormDataBeforeSave`.
+2. **KeyValue gera chaves UUID** que sujam o JSON traduzido — limpar antes de salvar.
+3. **Fallback automático de locale no fill**: preencher locale vazio com o locale padrão corrompe JSON aninhado (caso real: `content.logos_1.logos`) — o vippers desativou o método (`fillFormDISABLED`, TODO). Prefira fallback por campo simples, nunca recursivo em arrays aninhados.
+
+---
+
 ### Larastan (^3.12) `dev`
 Análise estática com consciência do Laravel (PHPStan). Configuração em `phpstan.neon` (nível 5).
 

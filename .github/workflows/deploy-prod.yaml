@@ -94,9 +94,9 @@ jobs:
             MAIL_FROM_NAME=${{ secrets.MAIL_FROM_NAME }}
             EOF
 
-            docker compose -f docker/production-compose.yml pull
-            docker compose -f docker/production-compose.yml up -d --remove-orphans
-            docker compose -f docker/production-compose.yml exec -T serve php artisan migrate --force
+            docker compose --project-directory . -f docker/production-compose.yml pull
+            docker compose --project-directory . -f docker/production-compose.yml up -d --remove-orphans
+            docker compose --project-directory . -f docker/production-compose.yml exec -T serve php artisan migrate --force
 
       - name: Verify deployment
         uses: appleboy/ssh-action@v1
@@ -106,5 +106,5 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
             cd ${{ secrets.APP_PATH }}
-            docker compose -f docker/production-compose.yml exec -T serve php artisan about --only=Environment
+            docker compose --project-directory . -f docker/production-compose.yml exec -T serve php artisan about --only=Environment
 

@@ -7,13 +7,24 @@
     "license": "MIT",
     "require": {
         "php": "^8.3",
+        "bezhansalleh/filament-shield": "^4.3",
+        "dutchcodingcompany/filament-developer-logins": "^2.1",
         "filament/filament": "^5.8.4",
+        "lara-zeus/spatie-translatable": "^2.0",
         "laravel/framework": "^13.17.0",
-        "laravel/tinker": "^3.0.0"
+        "laravel/tinker": "^3.0.0",
+        "lucascudo/laravel-pt-br-localization": "^3.0",
+        "pxlrbt/filament-activity-log": "^3.1",
+        "spatie/laravel-activitylog": "^5.1",
+        "spatie/laravel-permission": "^8.3",
+        "spatie/laravel-translatable": "^6.14",
+        "tomatophp/filament-language-switcher": "^5.0",
+        "valentin-morice/filament-json-column": "^4.1"
     },
     "require-dev": {
         "barryvdh/laravel-debugbar": "^4.4",
         "barryvdh/laravel-ide-helper": "^3.7",
+        "brianium/paratest": "^7.20",
         "fakerphp/faker": "^1.24.1",
         "laravel/boost": "^2.10.0",
         "laravel/pail": "^1.2.7",
@@ -23,7 +34,8 @@
         "mockery/mockery": "^1.6.15",
         "nunomaduro/collision": "^8.9.5",
         "nunomaduro/larastan": "^3.12",
-        "phpunit/phpunit": "^12.5.12"
+        "phpunit/phpunit": "^12.5.12",
+        "roave/security-advisories": "dev-latest"
     },
     "autoload": {
         "psr-4": {
@@ -59,8 +71,14 @@
             "@php artisan package:discover --ansi",
             "@php artisan filament:upgrade"
         ],
+        "post-install-cmd": [
+            "@php -r 'if (is_dir(\".git\")) { $git = shell_exec(\"command -v git 2>/dev/null\"); if ($git) { exec(\"git config --local core.hooksPath .githooks\");  echo \"Git Hooks Instalados\"; } }'",
+            "@php -r 'if (is_dir(\".git\")) { exec(\"git config --local merge.lang-json.driver \\\"php .githooks/merge-lang.php %O %A %B\\\"\"); echo \"Merge driver de traduções configurado\"; }'"
+        ],
         "post-update-cmd": [
-            "@php artisan vendor:publish --tag=laravel-assets --ansi --force"
+            "@php artisan vendor:publish --tag=laravel-assets --ansi --force",
+            "@php -r 'if (is_dir(\".git\")) { $git = shell_exec(\"command -v git 2>/dev/null\"); if ($git) { exec(\"git config --local core.hooksPath .githooks\"); echo \"Git Hooks Instalados\"; } }'",
+            "@php -r 'if (is_dir(\".git\")) { exec(\"git config --local merge.lang-json.driver \\\"php .githooks/merge-lang.php %O %A %B\\\"\"); echo \"Merge driver de traduções configurado\"; }'"
         ],
         "post-root-package-install": [
             "@php -r \"file_exists('.env') || copy('.env.example', '.env');\""

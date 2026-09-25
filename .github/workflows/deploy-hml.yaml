@@ -116,12 +116,12 @@ jobs:
             echo "DOCKER_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$SLUG" >> .env
 
             # Start app containers (connects to shared MySQL via network)
-            docker compose -f docker/preview-compose.yml pull
-            docker compose -f docker/preview-compose.yml up -d --remove-orphans
-            docker compose -f docker/preview-compose.yml exec -T serve php artisan migrate --force
+            docker compose --project-directory . -f docker/preview-compose.yml pull
+            docker compose --project-directory . -f docker/preview-compose.yml up -d --remove-orphans
+            docker compose --project-directory . -f docker/preview-compose.yml exec -T serve php artisan migrate --force
 
             # Get the serve container port
-            SERVE_PORT=$(docker compose -f docker/preview-compose.yml port serve 80 | cut -d: -f2)
+            SERVE_PORT=$(docker compose --project-directory . -f docker/preview-compose.yml port serve 80 | cut -d: -f2)
 
             # Add route to Cloudflare Tunnel config
             TUNNEL_CONFIG="${{ secrets.CLOUDFLARE_TUNNEL_CONFIG_PATH }}"

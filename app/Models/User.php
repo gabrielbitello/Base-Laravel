@@ -7,9 +7,14 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Spatie\Activitylog\Models\Concerns\CausesActivity;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
+    use CausesActivity, HasRoles, LogsActivity;
+
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 

@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Normaliza traduções staged (lang/*.json): valida JSON, ordena chaves e
+# padroniza formatação; o arquivo corrigido entra no próprio commit.
+staged_lang=$(git diff --cached --name-only --diff-filter=ACMR -- 'lang/*.json')
+if [ -n "$staged_lang" ]; then
+  # shellcheck disable=SC2086
+  php .githooks/normalize-lang.php $staged_lang || exit 1
+  # shellcheck disable=SC2086
+  git add $staged_lang
+fi

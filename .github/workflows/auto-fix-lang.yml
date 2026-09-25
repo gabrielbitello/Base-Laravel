@@ -1,0 +1,72 @@
+name: Auto-fix traduções
+
+# Ao abrir/atualizar um PR, mergeia a main na branch do PR usando o merge
+# driver semântico de lang/*.json e aplica a normalização do pre-commit,
+# empurrando o resultado de volta para a branch. Assim branches antigas chegam
+# na main sem conflito de traduções e já formatadas.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: auto-fix-lang-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  fix-lang:
+    # gate do template + só roda em PRs do próprio repositório — PR de fork
+    # não pode receber um token com permissão de push
+    if: >
+      vars.ENABLE_TEMPLATE_WORKFLOWS == 'true' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.head_ref != 'main' &&
+      !startsWith(github.head_ref, 'chore/auto-fix-lang')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+
+      - name: Registra merge driver de traduções
+        run: git config --local merge.lang-json.driver 'php .githooks/merge-lang.php %O %A %B'
+
+      - name: Mergeia main na branch do PR
+        id: merge
+        run: |
+          git fetch origin main
+          if git merge origin/main --no-edit; then
+            echo "merged=true" >> "$GITHUB_OUTPUT"
+          else
+            # conflito fora das traduções: aborta sem estragar a branch
+            git merge --abort || true
+            echo "merged=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Conflito não relacionado a traduções — deixando o PR como está."
+          fi
+
+      - name: Normaliza lang/*.json
+        if: steps.merge.outputs.merged == 'true'
+        run: git ls-files -- 'lang/*.json' | xargs -r php .githooks/normalize-lang.php
+
+      - name: Push das correções
+        if: steps.merge.outputs.merged == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if ! git diff --quiet || ! git diff --cached --quiet; then
+            git add lang/*.json
+            git commit -m "chore: auto-fix de traduções (merge da main + normalização) [skip ci]"
+          fi
+          # O push é sempre: quando o merge trouxe só mudanças de código, o
+          # merge commit existe sem diff de traduções — descartá-lo no else
+          # fazia o bot "perder" o merge silenciosamente.
+          git push

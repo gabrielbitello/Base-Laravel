@@ -9,3 +9,6 @@
 /.github export-ignore
 CHANGELOG.md export-ignore
 .styleci.yml export-ignore
+
+# Traduções: merge semântico de dicionário (driver configurado no composer)
+lang/*.json merge=lang-json
