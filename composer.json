@@ -28,6 +28,7 @@
         "barryvdh/laravel-ide-helper": "^3.7",
         "brianium/paratest": "^7.20",
         "fakerphp/faker": "^1.24.1",
+        "larastan/larastan": "^3.12",
         "laravel/boost": "^2.10.0",
         "laravel/pail": "^1.2.7",
         "laravel/pao": "^1.1",
@@ -35,7 +36,6 @@
         "laravel/sail": "^1.68.0",
         "mockery/mockery": "^1.6.15",
         "nunomaduro/collision": "^8.9.5",
-        "nunomaduro/larastan": "^3.12",
         "phpunit/phpunit": "^12.5.12",
         "roave/security-advisories": "dev-latest"
     },

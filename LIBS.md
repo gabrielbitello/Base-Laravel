@@ -169,6 +169,11 @@ Coberto por `tests/Unit/TranslatableFormsTest.php`.
 
 ---
 
+### Filament Language Switcher (^5.0)
+Botão no topbar do painel para trocar o idioma — usa o `__()` nativo, sem banco de traduções. Idioma persistido **por usuário** na coluna `lang` da tabela `users` (aplicado a cada request pelo middleware do plugin). Locais disponíveis configurados em `config/filament-language-switcher.php` (pt_BR + en).
+
+---
+
 ### Filament Spatie Settings Plugin (^5.8) + spatie/laravel-settings (^3.9)
 Página **Configurações** no painel para editar settings persistidos no banco (tabela `settings`), com cache e tipagem por classe DTO.
 
@@ -180,7 +185,7 @@ Página **Configurações** no painel para editar settings persistidos no banco 
 ---
 
 ### Larastan (^3.12) `dev`
-Análise estática com consciência do Laravel (PHPStan). Configuração em `phpstan.neon` (nível 5).
+Análise estática com consciência do Laravel (PHPStan). Configuração em `phpstan.neon` (nível 5). Pacote em `larastan/larastan` (o vendor antigo `nunomaduro/larastan` foi abandonado).
 
 ```bash
 vendor/bin/phpstan analyse
