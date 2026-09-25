@@ -137,7 +137,32 @@ Para usar num resource:
 2. Páginas do resource: usar as concerns `LaraZeus\SpatieTranslatable\Resources\Pages\{CreateRecord,EditRecord,ListRecords,ManageRecords,ViewRecord}\Translatable` (trocam as originais) — elas adicionam o seletor de locale e o content driver.
 3. Opcional: registrar `LaraZeus\SpatieTranslatable\SpatieTranslatablePlugin::make()` no painel para configurar `defaultLocales`/`useFallbackLocale`.
 
-**Armadilhas conhecidas** (observadas no vippers, ver o trait `EditPageWithTranslations` deles):
+**Trait do template** (`App\Filament\Translatable\Concerns\InteractsWithTranslatableForms`): normaliza FileUpload (string↔array), remove chaves UUID de Repeaters (preservando KeyValue) e aplica fallback do locale padrão **só para escalares** — nunca recursivo em arrays. Uso na página:
+
+```php
+use App\Filament\Translatable\Concerns\InteractsWithTranslatableForms;
+use LaraZeus\SpatieTranslatable\Resources\Pages\EditRecord\Translatable;
+
+class EditPost extends EditRecord
+{
+    use Translatable;
+    use InteractsWithTranslatableForms;
+
+    protected function mutateFormDataBeforeFill(array $data): array
+    {
+        return $this->translatableFill($data, $this->getRecord(), $this->activeLocale);
+    }
+
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        return $this->translatableSave($data);
+    }
+}
+```
+
+Coberto por `tests/Unit/TranslatableFormsTest.php`.
+
+**Armadilhas conhecidas** (estudo de caso vippers, trait `EditPageWithTranslations`):
 1. **FileUpload em campo translatable**: o spatie guarda string, o form espera array — normalizar em `mutateFormDataBeforeFill`/`mutateFormDataBeforeSave`.
 2. **KeyValue gera chaves UUID** que sujam o JSON traduzido — limpar antes de salvar.
 3. **Fallback automático de locale no fill**: preencher locale vazio com o locale padrão corrompe JSON aninhado (caso real: `content.logos_1.logos`) — o vippers desativou o método (`fillFormDISABLED`, TODO). Prefira fallback por campo simples, nunca recursivo em arrays aninhados.

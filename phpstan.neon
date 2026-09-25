@@ -4,5 +4,6 @@ includes:
 parameters:
     paths:
         - app
+        - tests/Unit/TranslatableFormsTest.php
 
     level: 5
