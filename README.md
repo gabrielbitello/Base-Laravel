@@ -95,5 +95,6 @@ Mudanças no `Production.Dockerfile` (ex.: instalar Java/extensões) não são s
 
 ## 📚 Documentação
 
+- [Recursos do Template](RECURSOS.md) — inventário completo
 - [Guia de Bibliotecas](LIBS.md)
 - [Guia para Agentes de IA](AGENTS.md)
