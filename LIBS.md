@@ -169,6 +169,16 @@ Coberto por `tests/Unit/TranslatableFormsTest.php`.
 
 ---
 
+### Filament Spatie Settings Plugin (^5.8) + spatie/laravel-settings (^3.9)
+Página **Configurações** no painel para editar settings persistidos no banco (tabela `settings`), com cache e tipagem por classe DTO.
+
+- Exemplo incluso: `app/Settings/SiteSettings.php` (campo `site_name`) + página `app/Filament/Pages/ManageSettings.php` em `/admin/manage-settings`.
+- Novo grupo de settings: crie a classe em `app/Settings/`, gere a migration de colunas com `php artisan make:settings-migration NomeDaMigration` e a página com `php artisan make:filament-settings-page` (ou copie a ManageSettings).
+- Uso no código: `app(App\Settings\SiteSettings::class)->site_name`.
+- Atenção (Filament 5): em páginas, tipar `protected static string|\UnitEnum|null $navigationGroup` (com barra — dentro de namespace o `UnitEnum` sem `\` resolve para um tipo inexistente).
+
+---
+
 ### Larastan (^3.12) `dev`
 Análise estática com consciência do Laravel (PHPStan). Configuração em `phpstan.neon` (nível 5).
 
