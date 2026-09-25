@@ -1,6 +1,6 @@
 # Base Laravel
 
-Sistema backend desenvolvido com Laravel 12 e Filament 5.
+Sistema backend desenvolvido com Laravel 13 e Filament 5.
 
 ## 🚀 Requisitos
 

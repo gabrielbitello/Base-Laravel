@@ -30,3 +30,8 @@ Thumbs.db
 /.vscode/*
 !/.vscode/mcp.json
 
+
+# Laravel IDE Helper (gerados)
+/_ide_helper.php
+/_ide_helper_models.php
+/.phpstorm.meta.php
