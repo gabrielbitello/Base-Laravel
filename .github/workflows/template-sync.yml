@@ -1,0 +1,69 @@
+name: Template sync
+
+# Em projetos derivados deste template: busca atualizações do template base
+# e abre um PR com o merge. Configure a variável de repositório
+# TEMPLATE_REMOTE com a URL do Base-Laravel para ativar (o template em si
+# não deve configurá-la).
+
+on:
+  schedule:
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: template-sync
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    if: ${{ vars.TEMPLATE_REMOTE != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+
+      - name: Busca o template
+        run: |
+          git remote add template "${{ vars.TEMPLATE_REMOTE }}"
+          git fetch template main
+
+      - name: Mergeia o template numa branch
+        id: merge
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --local merge.lang-json.driver 'php .githooks/merge-lang.php %O %A %B'
+          git checkout -B chore/template-sync
+          if git merge template/main --no-edit --allow-unrelated-histories; then
+            if git rev-parse "HEAD^2" >/dev/null 2>&1 || ! git diff --quiet "origin/${{ github.ref_name }}" HEAD; then
+              git push origin chore/template-sync --force
+              echo "pushed=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "Template sem novidades." && echo "pushed=false" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            git merge --abort || true
+            echo "::notice::Conflito no merge do template — resolva manualmente com 'make update-template'."
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Abre o PR
+        if: steps.merge.outputs.pushed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr create \
+            --head chore/template-sync \
+            --title "chore: atualizações do template base" \
+            --body "Merge automático de ${{ vars.TEMPLATE_REMOTE }}. Conflitos de traduções são resolvidos automaticamente pelo merge driver." \
+            || echo "PR já existe."

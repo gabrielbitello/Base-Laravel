@@ -115,6 +115,7 @@ make prod / prod-down / prod-logs                # modo produção no local
 make update                                      # atualiza o que estiver rodando, sem rebuild
 make translate KEY=... PT=...                    # traduções
 make missing-translations                        # chaves faltando
+make update-template                             # puxa atualizações do template base
 ```
 
 `composer dev` = `php artisan dev` (serve, queue, Pail, Vite). `composer test` roda testes.
@@ -184,11 +185,25 @@ Deploy invoca compose com `--project-directory .` — corrige a resolução do `
 
 ---
 
-## 15. Checklist para derivar um projeto deste template
+## 15. Atualizações em projetos derivados
+
+Projetos criados a partir deste template recebem as atualizações dele por **git merge** (histórico compartilhado via "Use this template"):
+
+- **Manual:** `make update-template` — busca o template e mergeia na branch atual. Configure o remoto uma vez por projeto: `git config template.remote <url-do-Base-Laravel>`.
+- **Automático:** workflow `template-sync.yml` — semanal (ou sob demanda) busca o template, mergeia numa branch `chore/template-sync` e abre PR. Ativa-se definindo a variável de repositório `TEMPLATE_REMOTE` com a URL do template (no template em si, não configurar).
+
+Conflitos de `lang/*.json` são resolvidos automaticamente pelo merge driver semântico; conflitos de código abortam com aviso para resolução manual. A troca de histórico não é necessária: como o código do template é _skeleton_ (routes, config, providers), o merge preserva as personalizações de cada projeto.
+
+Não usamos o formato de **dependência composer** de propósito: painel, Settings, traits e rotas do template são código de aplicação — como dependência exigiria refatorar tudo para publishables e tornaria cada atualização uma migração manual de qualquer forma.
+
+---
+
+## 16. Checklist para derivar um projeto deste template
 
 1. `composer install` (registra hooks + merge driver) e `cp .env.example .env`
 2. Ajustar `APP_NAME`/`APP_URL`/`APP_LOCALE` no `.env`
 3. `php artisan shield:install admin` (gera papéis/permissões + super admin)
 4. Criar models/resources; adicionar campos translatable conforme §5
 5. Novos settings: seguir §7
-6. Primeiro `make prod`/`make update` local para validar, depois configurar os secrets de deploy
+6. Ativar atualizações do template: `git config template.remote <url>` + variável `TEMPLATE_REMOTE` no GitHub (§15)
+7. Primeiro `make prod`/`make update` local para validar, depois configurar os secrets de deploy

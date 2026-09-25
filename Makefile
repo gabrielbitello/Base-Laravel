@@ -134,3 +134,11 @@ translate: ## Adiciona tradução: make translate KEY="English key" PT="texto" [
 
 missing-translations: ## Lista chaves __() usadas nas views sem tradução
 	@php scripts/find-missing-translations.php
+
+update-template: ## Puxa atualizações do template base (configure: git config template.remote <url>)
+	@remote=$$(git config template.remote); \
+	if [ -z "$$remote" ]; then \
+		echo "Configure o remoto do template primeiro:"; \
+		echo "  git config template.remote <url-do-Base-Laravel>"; exit 1; fi; \
+	git remote | grep -qx template || git remote add template "$$remote"; \
+	git fetch template main && git merge template/main --no-edit --allow-unrelated-histories
