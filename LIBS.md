@@ -195,7 +195,8 @@ Roda automaticamente no workflow de CI (`.github/workflows/quality.yaml`).
 | Pacote | Versão | Uso |
 |--------|--------|-----|
 | vite | ^8.3 | Build dos assets com `laravel-vite-plugin` |
+| typescript | ^7.0 | Frontend em TypeScript (`resources/js/*.ts`); `npm run typecheck` e validação no build |
 | tailwindcss | ^4.3 | CSS utilitário (plugin `@tailwindcss/vite`) |
-| axios | ^1.14 \|\| !1.14.1 | Cliente HTTP no frontend (`resources/js/bootstrap.js`); a exclusão `!1.14.1` impede re-lock de uma versão com defeito |
+| axios | ^1.14 \|\| !1.14.1 | Cliente HTTP no frontend (`resources/js/bootstrap.ts`); a exclusão `!1.14.1` impede re-lock de uma versão com defeito |
 
-**Comandos:** `composer dev` sobe servidor, queue, logs (Pail) e Vite via `php artisan dev`.
+**Comandos:** `composer dev` sobe servidor, queue, logs (Pail) e Vite via `php artisan dev`. O build roda `tsc --noEmit` antes do Vite — erro de tipo quebra o build (e o CI).
