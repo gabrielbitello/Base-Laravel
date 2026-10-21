@@ -1,4 +1,4 @@
-FROM dunglas/frankenphp:1-php8.5
+FROM dunglas/frankenphp:1.13.1-php8.5.12-bookworm
 
 ADD --chmod=0755 https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions /usr/local/bin/
 
